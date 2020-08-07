@@ -1,0 +1,117 @@
+EPE Analysis Pipeline:
+
+MERRA-2 data:
+/discover/nobackup/projects/gmao/merra2/data/products/
+
+Zhou's EPE stats:
+/discover/nobackup/yzhou1/EPE/IMERG_CONUS
+
+to copy a file into discover:
+scp ~/myfile ammurphr@discover.nccs.nasa.gov:/discover/nobackup/ammurphr
+
+to copy a file from discover to me:
+scp ammurphr@discover.nccs.nasa.gov:/discover/nobackup/ammurphr/myfile /.
+
+# to get into Discover:
+ssh -Y -C discover.nccs.nasa.gov
+Load Python 3:
+module load python/GEOSpyD/Ana2018.12_py3.7
+import matplotlib
+matplotlib.use('TkAgg')
+python
+
+# to make histograms of EPE parameters from their statistics file:
+import test.py
+# inputs: test.stat_histo(stats file, parameter name, parameter index)
+# example: duration of events in 2017 MAM
+stat_histo('extreme_event_stats_2017_MAM.nc', 'Duration', 4)
+
+# to find variable grids around events and save them into a new .nc4 file:
+# (this only runs on 2D variables, and only saves the start/peak/end time steps)
+import findgrids
+# inputs: findgrids.find_IMERG_in_MERRA2(event stats file, core(100,200,300, or 400), year, month 1 of season, month 2 of season, month 3 of season, outfile)
+# example: 2017 MAM
+findgrids.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', 400, 2017, '03', '04', '05', '2017_MAM_var_avgs.nc4')
+
+# to open and plot the saved grids from that outfile:
+# (makes large pairplots with seaborn package)
+import open_info
+# inputs: open_info.open_event_info(grids file, event stats file, 'YEAR_SEA')
+# example: 2017 MAM
+open_info.open_event_info('2017_MAM_var_avgs.nc4', 'extreme_event_stats_2017_MAM.nc', '2017_MAM')
+
+# to find the variable grids around an event and only save their averages/standard deviations: 
+# (faster & smaller outfile (only avg&stddev), doesn't include lat/lon info)
+import get_stats
+get_stats.files_list('Y2017/M03', 'Y2017/M04', 'Y2017/M05', '2017_MAM')
+get_stats.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_files.txt', '2017_MAM_var_avgs.nc4')
+get_stats.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_3D_files.txt', '2017_MAM_3D_stats.nc4')
+
+# to find the variable grids around an event and save or plot the whole grids:
+# (faster than findgrids (puts less header info in the outfile), gets whole grids(2D and 3D variables))
+import get_grids
+# inputs/defaults: find_IMERG_in_MERRA2(stats file, filelist, output, ysn, pick, plotsave='plot', box=0, lev=0, levin=0, pickvar='all')
+get_grids.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_files.txt', '2017_MAM_var_avgs.nc4', '2017_MAM', 4)
+get_grids.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_3D_files.txt', '2017_MAM_var_stats_3D.nc4', '2017_MAM', 4, 250, 21)
+get_grids.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_3D_files.txt', '2017_MAM_var_stats_3D.nc4', '2017_MAM', 4, 500, 16)
+get_grids.find_IMERG_in_MERRA2('extreme_event_stats_2017_MAM.nc', '2017_MAM_3D_files.txt', '2017_MAM_var_stats_3D.nc4', '2017_MAM', 4, 850, 6)
+
+# to open 2D data files from get_stats and make percentage plots of them:
+# (you can also uncomment the other kinds of plots in there (scatterplots), but I think the percent plots are the most useful)
+import open_info_new
+# inputs/defaults: open_info_new.open_event_info(data file, stats file, 'YEAR_SEA', dlimb=0, dlima=1000)
+# small events (duration < 6hrs):
+open_info_new.open_event_info('2017_MAM_var_avgstat.nc4', 'extreme_event_stats_2017_MAM.nc', '2017_MAM_5x5', dlima=6)
+# medium events (6 <= duration < 24hrs):
+open_info_new.open_event_info('2017_MAM_var_avg.nc4', 'extreme_event_stats_2017_MAM.nc', '2017_MAM_10x10', dlimb=6, dlima=24)
+# big events (duration > 24hrs):
+open_info_new.open_event_info('2017_MAM_var_avg.nc4', 'extreme_event_stats_2017_MAM.nc', '2017_MAM_15x15', dlimb=24)
+
+# to open 3D outfile from get_stats:
+import open_stats
+open_stats.open_event_info('2017_MAM_var_stats_3D.nc4', 'extreme_event_stats_2017_MAM.nc', '2017_MAM')
+
+# to get wind averages:
+import wind_avgs
+# for seasonal averages over CONUS:
+wind_avgs.main('UV_avgs_1980_2019.nc4', 'sn', 'avg')
+
+# for seasonal average maps over CONUS:
+wind_avgs.main('UV_avgs_1980_2019_grids.nc4', 'sn', 'map')
+
+# for yearly averages over CONUS:
+wind_avgs.main('UV_avgs_1980_2019.nc4', 'yr', 'avg')
+
+# for yearly average maps over CONUS:
+wind_avgs.main('UV_avgs_1980_2019_grids.nc4', 'yr', 'map')
+
+# inputs/defaults:
+# wind_avgs.main(outfile, yrsn, avgmap, lonmin=-65, lonmax=-125, latmin=25, latmax=50, pick_c='no', pick_yr='no', pick_sn='no')
+# options:
+# you can specify yearly/seasonal averages/maps, your latitude/longitude range, and if you want to pick out a specific year/season
+wind_avgs.main('outfile', 'sn' or 'yr', 'avg' or 'map', lonmin=#, lonmax=#, latmin=#, latmax=#, pick_c=#, pick_yr=#, pick_sn='no' or 0(DJF) or 1(MAM) or 2(JJA) or 3(SON))
+# example: seasonal average map of 2017 MAM over the whole globe:
+wind_avgs.main('UV_maps_2017_MAM.nc4', 'sn', 'map', lonmin=180, lonmax=-180, latmin=-90, latmax=90, pick_c=400, pick_yr=2017, pick_sn=0)
+
+# to plot simple averages:
+wind_avgs.plot_avgs('UV_avgs_1980_2019.nc4')
+
+# to plot a variable's average map for a certain year:
+wind_avgs.map_plot('UV_avgs_1980_2019_grids.nc4', 'U500', 1980)
+
+# to get the seasonal trend of any two variables, from 1980 to any year you want, over the whole globe:
+wind_avgs.get_trend(v1, v2, v1_label, v2_label, lev, sn, lonmin=180, lonmax=-180, latmin=-90, latmax=90, yr_pick='no', trend='total_change')
+
+# for example, U and V at 500hPa for DJF:
+wind_avgs.get_trend('U', 'V', 'U500', 'V500', lev=16, sn=0)
+
+
+
+test 3D file:
+/discover/nobackup/projects/gmao/merra2/data/products/MERRA2_400/Y2017/M03/MERRA2_400.inst3_3d_asm_Np.20170301.nc4
+
+test 2D file:
+/discover/nobackup/projects/gmao/merra2/data/products/MERRA2_400/Y2017/M03/MERRA2_400.tavg1_2d_slv_Nx.20170301.nc4
+
+monthly average:
+/discover/nobackup/projects/gmao/merra2/data/products/MERRA2_400/Y2017/M03/MERRA2_400.instM_3d_asm_Np.201703.nc4 
